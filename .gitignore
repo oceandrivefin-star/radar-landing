@@ -5,5 +5,3 @@ Thumbs.db
 *.swp
 node_modules/
 .vercel
-
-.vercel
