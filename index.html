@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="Радар спроса для металлообработки — demand intelligence SaaS. Показывает будущие заказы за 3-6 месяцев до тендера." />
+<title>Радар — demand intelligence для металлообработки</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0a0a;
+    --bg-elev: #121212;
+    --border: #262626;
+    --text: #e5e5e5;
+    --text-dim: #a3a3a3;
+    --text-muted: #737373;
+    --accent: #10b981;
+    --accent-soft: rgba(16, 185, 129, 0.1);
+    --warn: #facc15;
+    --warn-soft: rgba(250, 204, 21, 0.1);
+    --info: #60a5fa;
+  }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: 1020px; margin: 0 auto; padding: 0 24px; }
+
+  /* Nav */
+  nav {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(10, 10, 10, 0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+  nav .container { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; }
+  .logo { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+  .logo span { color: var(--accent); }
+  nav ul { display: flex; gap: 22px; list-style: none; }
+  nav a { color: var(--text-dim); text-decoration: none; font-size: 14px; transition: color 0.15s; }
+  nav a:hover { color: var(--text); }
+  @media (max-width: 640px) { nav ul { display: none; } }
+
+  /* Hero */
+  .hero { padding: 88px 0 64px; text-align: center; }
+  .hero-eyebrow {
+    display: inline-block;
+    padding: 5px 12px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+  }
+  .hero h1 {
+    font-size: clamp(32px, 5vw, 52px);
+    font-weight: 700;
+    letter-spacing: -1.2px;
+    line-height: 1.15;
+    margin-bottom: 18px;
+  }
+  .hero h1 em { color: var(--accent); font-style: normal; }
+  .hero-lede {
+    font-size: 18px;
+    color: var(--text-dim);
+    max-width: 680px;
+    margin: 0 auto 32px;
+  }
+  .hero-cta { display: inline-flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  .btn {
+    display: inline-block;
+    padding: 11px 22px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.15s;
+    cursor: pointer;
+    border: 1px solid transparent;
+  }
+  .btn-primary { background: var(--accent); color: #052e1f; }
+  .btn-primary:hover { background: #34d399; }
+  .btn-ghost { border-color: var(--border); color: var(--text); }
+  .btn-ghost:hover { background: var(--bg-elev); }
+
+  /* Section */
+  section { padding: 64px 0; }
+  section.alt { background: linear-gradient(180deg, transparent, rgba(16, 185, 129, 0.02), transparent); }
+  .section-eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 11px;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+  h2 {
+    font-size: clamp(24px, 3.5vw, 34px);
+    font-weight: 700;
+    letter-spacing: -0.6px;
+    margin-bottom: 16px;
+  }
+  .section-lede {
+    color: var(--text-dim);
+    font-size: 16px;
+    max-width: 740px;
+    margin-bottom: 32px;
+  }
+
+  /* Problem cards */
+  .problem-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 24px; }
+  @media (max-width: 700px) { .problem-grid { grid-template-columns: 1fr; } }
+  .problem-card {
+    padding: 22px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-elev);
+  }
+  .problem-card h3 { font-size: 16px; margin-bottom: 8px; }
+  .problem-card.bad h3::before { content: "❌ "; }
+  .problem-card.good h3::before { content: "✅ "; }
+  .problem-card.good { border-color: rgba(16, 185, 129, 0.3); }
+  .problem-card p { color: var(--text-dim); font-size: 14px; }
+
+  /* Flow diagram */
+  .flow {
+    margin: 32px 0;
+    padding: 32px;
+    border: 1px solid var(--border);
+    background: var(--bg-elev);
+    border-radius: 12px;
+    overflow-x: auto;
+  }
+  .flow-row {
+    display: grid;
+    grid-template-columns: 200px 60px 1fr;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 0;
+    border-bottom: 1px dashed var(--border);
+  }
+  .flow-row:last-child { border-bottom: none; }
+  .flow-row.compact { padding: 10px 0; }
+
+  .flow-stage {
+    text-align: center;
+    padding: 12px;
+    border-radius: 8px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+  }
+  .flow-stage strong { display: block; font-size: 14px; }
+  .flow-stage .meta { color: var(--text-muted); font-size: 11px; margin-top: 4px; }
+
+  .flow-arrow {
+    text-align: center;
+    color: var(--accent);
+    font-size: 24px;
+    font-weight: 200;
+  }
+
+  .flow-detail { color: var(--text-dim); font-size: 14px; }
+  .flow-detail strong { color: var(--text); }
+  .flow-detail .sources { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .flow-detail .source-pill {
+    padding: 3px 9px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .flow-detail .source-pill.live { color: var(--accent); border-color: rgba(16, 185, 129, 0.3); }
+  .flow-detail .source-pill.mock { color: var(--warn); border-color: rgba(250, 204, 21, 0.3); }
+
+  /* Status section */
+  .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 720px) { .status-grid { grid-template-columns: 1fr; } }
+  .status-col h3 {
+    font-size: 15px;
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .status-col.done h3 { color: var(--accent); }
+  .status-col.wip h3 { color: var(--warn); }
+  .status-list { list-style: none; }
+  .status-list li {
+    padding: 8px 0;
+    font-size: 14px;
+    color: var(--text-dim);
+    display: flex;
+    gap: 8px;
+  }
+  .status-list li::before {
+    flex-shrink: 0;
+    width: 16px;
+    text-align: center;
+  }
+  .done .status-list li::before { content: "✓"; color: var(--accent); }
+  .wip .status-list li::before { content: "○"; color: var(--warn); }
+  .status-list strong { color: var(--text); font-weight: 500; }
+
+  /* Roadmap */
+  .roadmap { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  @media (max-width: 800px) { .roadmap { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 480px) { .roadmap { grid-template-columns: 1fr; } }
+  .phase {
+    padding: 20px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-elev);
+  }
+  .phase.active {
+    border-color: rgba(16, 185, 129, 0.4);
+    background: var(--accent-soft);
+  }
+  .phase-name { font-weight: 600; font-size: 16px; margin-bottom: 6px; }
+  .phase.active .phase-name::after {
+    content: " · сейчас";
+    color: var(--accent);
+    font-weight: 400;
+    font-size: 13px;
+  }
+  .phase-when { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+  .phase-bullets { list-style: none; font-size: 13px; color: var(--text-dim); }
+  .phase-bullets li { padding: 3px 0; }
+
+  /* Numbers */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; padding: 32px; border-radius: 12px; background: var(--bg-elev); border: 1px solid var(--border); margin-top: 24px; }
+  @media (max-width: 700px) { .stats { grid-template-columns: 1fr 1fr; gap: 16px; padding: 24px; } }
+  .stat { text-align: center; }
+  .stat-num { font-size: 32px; font-weight: 700; color: var(--accent); letter-spacing: -0.5px; }
+  .stat-label { font-size: 13px; color: var(--text-dim); margin-top: 4px; }
+
+  /* Audience */
+  .audience-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 720px) { .audience-grid { grid-template-columns: 1fr; } }
+  .audience-card {
+    padding: 22px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-elev);
+  }
+  .audience-card h3 { font-size: 15px; margin-bottom: 8px; }
+  .audience-card p { color: var(--text-dim); font-size: 13px; }
+
+  /* Footer */
+  footer { padding: 64px 0 48px; border-top: 1px solid var(--border); text-align: center; }
+  footer h2 { margin-bottom: 12px; }
+  footer p { color: var(--text-dim); margin-bottom: 24px; }
+  .contact-row { display: inline-flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  .contact-meta { margin-top: 32px; color: var(--text-muted); font-size: 12px; }
+
+  /* utility */
+  .text-accent { color: var(--accent); }
+  .text-warn { color: var(--warn); }
+  .em-soft { color: var(--text); font-style: normal; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="container">
+    <div class="logo">Радар<span>·</span></div>
+    <ul>
+      <li><a href="#problem">Проблема</a></li>
+      <li><a href="#how">Как работает</a></li>
+      <li><a href="#status">Статус</a></li>
+      <li><a href="#roadmap">Куда идём</a></li>
+      <li><a href="#contact">Связаться</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="container">
+    <span class="hero-eyebrow">B2B SaaS · металлообработка · РФ</span>
+    <h1>Будущие заказы вашему производству — <em>за 3–6 месяцев до тендера</em></h1>
+    <p class="hero-lede">
+      Радар собирает сигналы из открытых источников России (тендеры, разрешения на строительство,
+      банкротства подрядчиков, арбитражные споры) и каждое утро присылает 5–10 карточек с
+      потенциальными заказчиками — с интерпретацией, цепочкой ЛПР и рекомендуемым действием.
+    </p>
+    <div class="hero-cta">
+      <a href="#contact" class="btn btn-primary">Стать пилотом</a>
+      <a href="#how" class="btn btn-ghost">Как это работает</a>
+    </div>
+  </div>
+</section>
+
+<!-- PROBLEM -->
+<section id="problem" class="alt">
+  <div class="container">
+    <div class="section-eyebrow">Проблема</div>
+    <h2>Тендер — это конец гонки, а не начало</h2>
+    <p class="section-lede">
+      К моменту, когда заказ появляется в zakupki.gov.ru или на тендерной площадке, требования
+      уже сформированы, фаворит часто определён, и конкуренция уходит в цену.
+      Победитель — тот, кто узнал о потребности первым и зашёл к заказчику до тендера.
+    </p>
+    <div class="problem-grid">
+      <div class="problem-card bad">
+        <h3>Как сейчас находят заказы</h3>
+        <p>Контур.Закупки, Seldon, СБИС — показывают <strong>опубликованные</strong> тендеры.
+          На стадии, где можно только подать заявку и ждать. Это <em>после драки</em>.</p>
+      </div>
+      <div class="problem-card good">
+        <h3>Что делает Радар</h3>
+        <p>Показывает заказ <strong>за 3–6 месяцев до тендера</strong> — на стадии получения
+          разрешения на строительство, банкротства предыдущего подрядчика, расширения завода.
+          Это <em>до драки</em>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FLOW -->
+<section id="how">
+  <div class="container">
+    <div class="section-eyebrow">Как работает</div>
+    <h2>От сигнала к коммерческому действию — 30 минут</h2>
+    <p class="section-lede">
+      Радар обрабатывает 4 типа сигналов из открытых источников. Каждый сигнал проходит через
+      AI-интерпретацию и превращается в карточку, готовую к работе.
+    </p>
+
+    <div class="flow">
+      <div class="flow-row">
+        <div class="flow-stage">
+          <strong>1. Источники</strong>
+          <div class="meta">парсеры каждые 30 мин</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-detail">
+          Мониторим 5 источников открытых данных РФ:
+          <div class="sources">
+            <span class="source-pill mock">ЕИС (zakupki.gov.ru)</span>
+            <span class="source-pill mock">наш.дом.рф</span>
+            <span class="source-pill mock">kad.arbitr.ru</span>
+            <span class="source-pill mock">fedresurs.ru</span>
+            <span class="source-pill live">egrul.org ✓</span>
+          </div>
+          <div style="margin-top: 8px; font-size: 12px; color: var(--text-muted);">
+            <span class="text-accent">●</span> подключено к живым данным ·
+            <span class="text-warn">●</span> готов код, ждёт ключей доступа
+          </div>
+        </div>
+      </div>
+
+      <div class="flow-row">
+        <div class="flow-stage">
+          <strong>2. AI-интерпретация</strong>
+          <div class="meta">Claude Opus 4.5</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-detail">
+          Каждый сигнал AI читает в контексте вашего профиля и отвечает на вопрос
+          <strong>«что это значит для металлообработки?»</strong>.
+          Промпт версионирован, каждый вызов логируется (модель, токены, стоимость, latency).
+        </div>
+      </div>
+
+      <div class="flow-row">
+        <div class="flow-stage">
+          <strong>3. Цепочка ЛПР</strong>
+          <div class="meta">второй AI-вызов</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-detail">
+          AI строит карту принятия решения по объекту:
+          <em>заказчик → проектировщик → ГП → снабжение → ЛПР</em>.
+          Рекомендует звено для захода. Это <strong>главный долгосрочный moat</strong>:
+          граф связей в отрасли, который накапливается с каждым клиентом.
+        </div>
+      </div>
+
+      <div class="flow-row">
+        <div class="flow-stage">
+          <strong>4. Скоринг и фильтр</strong>
+          <div class="meta">5 параметров</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-detail">
+          Деньги, срочность, релевантность, доступ к ЛПР, стадия — каждый по шкале 1–5.
+          Итоговый Score &lt; 3 → отбрасывается. ≥3 → попадает в очередь оператора.
+        </div>
+      </div>
+
+      <div class="flow-row">
+        <div class="flow-stage">
+          <strong>5. Оператор</strong>
+          <div class="meta">~30 мин/день</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-detail">
+          Человек проходит очередь, одобряет / отклоняет / редактирует AI-вывод.
+          Каждый reject — это данные для калибровки промптов следующей версии.
+          На объёме v0 — 5+ карточек/день, ≤30 мин на всё.
+        </div>
+      </div>
+
+      <div class="flow-row">
+        <div class="flow-stage" style="border-color: rgba(16, 185, 129, 0.4); background: var(--accent-soft);">
+          <strong>6. Утренняя лента</strong>
+          <div class="meta">пилоту в 8:00</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-detail">
+          Email-дайджест каждое утро + Telegram-алерты для срочных карточек (Score 5 / окно «сегодня»).
+          Готовые карточки: что произошло, что значит, кому писать, какой оффер.
+          <a href="https://github.com/oceandrivefin-star/radarmain/blob/main/pilot/morning-feed-demo.html"
+             target="_blank"
+             style="color: var(--accent);">→ посмотреть пример ленты</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<section class="alt">
+  <div class="container">
+    <div class="section-eyebrow">Технология</div>
+    <h2>Production-grade, не прототип</h2>
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-num">5</div>
+        <div class="stat-label">источников данных<br>в коде</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">140+</div>
+        <div class="stat-label">автоматических тестов</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">15/15</div>
+        <div class="stat-label">этапов разработки<br>завершены</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">2</div>
+        <div class="stat-label">AI-промпта с версионированием</div>
+      </div>
+    </div>
+    <p style="margin-top: 16px; font-size: 13px; color: var(--text-muted); text-align: center;">
+      Python 3.12 / FastAPI / PostgreSQL / Celery / Next.js · Yandex Cloud (152-ФЗ) · Claude Opus 4.5
+    </p>
+  </div>
+</section>
+
+<!-- STATUS -->
+<section id="status">
+  <div class="container">
+    <div class="section-eyebrow">Где мы сейчас</div>
+    <h2>Что готово · что в работе</h2>
+    <p class="section-lede">
+      Код готов. Один источник работает на живых данных. Четыре других ждут регистраций
+      на государственных порталах (это процесс на 2–4 недели).
+    </p>
+
+    <div class="status-grid">
+      <div class="status-col done">
+        <h3>Готово</h3>
+        <ul class="status-list">
+          <li><strong>Код 5 источников данных</strong> — клиенты к ЕИС, наш.дом.рф, kad.arbitr.ru, fedresurs.ru, egrul.org</li>
+          <li><strong>AI-обработка</strong> — interpret_signal + decision_chain (Claude Opus 4.5)</li>
+          <li><strong>Очередь оператора</strong> — Next.js admin с быстрой модерацией (A/R/E/J keys)</li>
+          <li><strong>Доставка пилоту</strong> — email-дайджест 8:00 МСК + Telegram-алерты</li>
+          <li><strong>Полная трассировка</strong> — откуда сигнал, что AI получил, что вернул, сколько стоило</li>
+          <li><strong>Инфраструктура</strong> — Docker, миграции, бэкапы, runbook</li>
+          <li><strong>Enrichment</strong> — обогащение по ИНН через egrul.org (бесплатно, проверено на живых данных)</li>
+        </ul>
+      </div>
+
+      <div class="status-col wip">
+        <h3>В работе</h3>
+        <ul class="status-list">
+          <li><strong>Регистрации на 4 порталах</strong> — ЕИС / наш.дом.рф / fedresurs / apidata.mos.ru (юр.лицо, 1-3 дня каждая)</li>
+          <li><strong>Электронная подпись</strong> — КЭП через УЦ ФНС (бесплатно, ~1.5К ₽ за токен, 1-2 недели)</li>
+          <li><strong>Калибровочный набор</strong> — 20 размеченных сигналов для проверки AI на 60%+ точности</li>
+          <li><strong>Поиск первого пилота</strong> — outreach среди МСБ-производств в МСК+МО, цикл 2-6 недель</li>
+          <li><strong>Дашборд метрик</strong> — IDV (объём выявленного спроса), Coverage, Time-to-Pipeline</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ROADMAP -->
+<section id="roadmap" class="alt">
+  <div class="container">
+    <div class="section-eyebrow">Развитие</div>
+    <h2>4 фазы: от пилота к платформе</h2>
+    <div class="roadmap">
+      <div class="phase active">
+        <div class="phase-name">v0 Push</div>
+        <div class="phase-when">сейчас · 2026</div>
+        <ul class="phase-bullets">
+          <li>1 пилотное производство</li>
+          <li>Москва + МО</li>
+          <li>Только демонстрация спроса</li>
+          <li>Доказательство гипотезы</li>
+        </ul>
+      </div>
+      <div class="phase">
+        <div class="phase-name">v1</div>
+        <div class="phase-when">после пилота</div>
+        <ul class="phase-bullets">
+          <li>3–15 платящих клиентов</li>
+          <li>Второй регион (Урал)</li>
+          <li>Pull-модуль: приём заявок</li>
+          <li>CRM-интеграции</li>
+        </ul>
+      </div>
+      <div class="phase">
+        <div class="phase-name">v2</div>
+        <div class="phase-when">+12 месяцев</div>
+        <ul class="phase-bullets">
+          <li>Managed RFQ (Fictiv-light)</li>
+          <li>Закупка металла</li>
+          <li>Сеть валидированных производств</li>
+          <li>3+ регион</li>
+        </ul>
+      </div>
+      <div class="phase">
+        <div class="phase-name">v3</div>
+        <div class="phase-when">+24 месяца</div>
+        <ul class="phase-bullets">
+          <li>Compliance 44/223-ФЗ</li>
+          <li>AI-движок ценообразования</li>
+          <li>Партнёрская сеть юристов</li>
+          <li>Федеральный масштаб</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- AUDIENCE -->
+<section>
+  <div class="container">
+    <div class="section-eyebrow">Кому полезно</div>
+    <h2>Радар работает для трёх сторон рынка</h2>
+    <div class="audience-grid">
+      <div class="audience-card">
+        <h3>🏭 Производствам металлообработки</h3>
+        <p>Загрузка мощностей, выход к заказчикам до тендера, прогноз закупок металла,
+          поддержка при участии в 44/223-ФЗ.</p>
+      </div>
+      <div class="audience-card">
+        <h3>📐 Снабженцам и закупщикам</h3>
+        <p>Загрузил чертёж — получил короткий список релевантных производств с обоснованием.
+          Без обзвона десятков компаний.</p>
+      </div>
+      <div class="audience-card">
+        <h3>⚙️ Поставщикам металла</h3>
+        <p>Сегментированный спрос с известным профилем потребления.
+          Вместо общего потока лидов — производства, которые регулярно закупают именно вашу марку и сортамент.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT / CTA -->
+<footer id="contact">
+  <div class="container">
+    <h2>Хотите быть первым пилотом?</h2>
+    <p>
+      На пилотный период (3 месяца) — <strong>бесплатно</strong> в обмен на обратную связь.<br>
+      Свяжитесь, чтобы обсудить подходит ли ваше производство.
+    </p>
+    <div class="contact-row">
+      <a href="mailto:oceandrivefin@gmail.com" class="btn btn-primary">Написать</a>
+      <a href="https://github.com/oceandrivefin-star/radarmain"
+         target="_blank"
+         class="btn btn-ghost">Документация проекта</a>
+    </div>
+    <p class="contact-meta">
+      Андрей · oceandrivefin@gmail.com · <a href="https://t.me/" style="color: var(--text-muted);">Telegram</a>
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>
