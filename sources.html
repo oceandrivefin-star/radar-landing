@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Радар — карта источников данных</title>
+<meta name="description" content="Источники сигналов Радара: бесплатные (текущая v0) и платные (расширение для v1+). Что достаём, как интерпретируем, сколько стоит." />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0a0a;
+    --bg-elev: #121212;
+    --bg-elev-2: #1a1a1a;
+    --border: #262626;
+    --border-strong: #333;
+    --text: #e5e5e5;
+    --text-dim: #a3a3a3;
+    --text-muted: #737373;
+    --accent: #10b981;
+    --accent-soft: rgba(16, 185, 129, 0.1);
+    --warn: #facc15;
+    --warn-soft: rgba(250, 204, 21, 0.08);
+    --info: #60a5fa;
+    --info-soft: rgba(96, 165, 250, 0.08);
+    --paid: #c084fc;
+    --paid-soft: rgba(192, 132, 252, 0.08);
+  }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* Nav */
+  nav {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(10, 10, 10, 0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+  nav .container { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; }
+  .logo { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; color: var(--text); }
+  .logo span { color: var(--accent); }
+  nav ul { display: flex; gap: 22px; list-style: none; }
+  nav a { color: var(--text-dim); text-decoration: none; font-size: 14px; transition: color 0.15s; }
+  nav a:hover { color: var(--text); text-decoration: none; }
+  nav a.active { color: var(--text); }
+  @media (max-width: 700px) { nav ul { display: none; } }
+
+  /* Hero */
+  .hero { padding: 64px 0 40px; text-align: center; }
+  .hero-eyebrow {
+    display: inline-block;
+    padding: 5px 12px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 18px;
+  }
+  h1 {
+    font-size: clamp(28px, 4.5vw, 44px);
+    font-weight: 700;
+    letter-spacing: -1px;
+    line-height: 1.15;
+    margin-bottom: 14px;
+  }
+  .hero-lede {
+    font-size: 17px;
+    color: var(--text-dim);
+    max-width: 760px;
+    margin: 0 auto;
+  }
+
+  /* Legend */
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 16px; justify-content: center;
+    margin: 32px 0;
+    padding: 16px 24px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-elev);
+    font-size: 13px; color: var(--text-dim);
+  }
+  .legend-item { display: inline-flex; align-items: center; gap: 6px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .dot-live { background: var(--accent); }
+  .dot-wait { background: var(--warn); }
+  .dot-paid { background: var(--paid); }
+  .dot-future { background: var(--text-muted); }
+
+  /* Section split */
+  .split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    margin: 32px 0;
+  }
+  @media (max-width: 980px) { .split { grid-template-columns: 1fr; gap: 24px; } }
+
+  .pane {
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--bg-elev);
+    overflow: hidden;
+  }
+  .pane-head {
+    padding: 22px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .pane.free .pane-head { background: linear-gradient(180deg, var(--accent-soft), transparent); border-color: rgba(16, 185, 129, 0.25); }
+  .pane.paid .pane-head { background: linear-gradient(180deg, var(--paid-soft), transparent); border-color: rgba(192, 132, 252, 0.25); }
+  .pane-eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 11px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .pane.free .pane-eyebrow { color: var(--accent); }
+  .pane.paid .pane-eyebrow { color: var(--paid); }
+  .pane h2 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.4px;
+    margin-bottom: 8px;
+  }
+  .pane-lede { color: var(--text-dim); font-size: 14px; }
+  .pane-cost {
+    display: inline-block; margin-top: 12px;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 13px; font-weight: 600;
+  }
+  .pane.free .pane-cost { background: rgba(16, 185, 129, 0.12); color: var(--accent); }
+  .pane.paid .pane-cost { background: rgba(192, 132, 252, 0.12); color: var(--paid); }
+
+  /* Source card */
+  .source-list { padding: 18px 16px; display: flex; flex-direction: column; gap: 16px; }
+  .source {
+    padding: 18px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-elev-2);
+    transition: border-color 0.15s;
+  }
+  .source.live { border-color: rgba(16, 185, 129, 0.4); }
+  .source.wait { border-left: 3px solid var(--warn); }
+  .source.paid { border-left: 3px solid var(--paid); }
+  .source.future { border-left: 3px solid var(--text-muted); }
+
+  .source-head {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    margin-bottom: 10px;
+  }
+  .source-name { font-size: 15px; font-weight: 600; }
+  .source-domain { color: var(--text-muted); font-size: 12px; font-family: monospace; }
+  .source-status {
+    margin-left: auto;
+    padding: 3px 9px;
+    border-radius: 4px;
+    font-size: 11px; font-weight: 500;
+  }
+  .status-live { background: var(--accent-soft); color: var(--accent); }
+  .status-wait { background: var(--warn-soft); color: var(--warn); }
+  .status-paid { background: var(--paid-soft); color: var(--paid); }
+  .status-future { background: rgba(115, 115, 115, 0.1); color: var(--text-muted); }
+
+  .source-section { margin-top: 12px; }
+  .source-section-label {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 10px;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .source-section-body {
+    font-size: 13.5px;
+    color: var(--text-dim);
+  }
+  .source-section-body strong { color: var(--text); font-weight: 500; }
+  .source-section-body ul { list-style: none; }
+  .source-section-body li { padding: 2px 0 2px 14px; position: relative; }
+  .source-section-body li::before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: var(--text-muted);
+  }
+  .source-meta {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--border);
+    display: flex; flex-wrap: wrap; gap: 8px;
+    font-size: 11px;
+  }
+  .meta-pill {
+    padding: 3px 8px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-dim);
+  }
+  .meta-pill.cost { color: var(--paid); border-color: rgba(192, 132, 252, 0.3); }
+  .meta-pill.free { color: var(--accent); border-color: rgba(16, 185, 129, 0.3); }
+
+  /* Comparison block */
+  .compare-section { padding: 64px 0; background: linear-gradient(180deg, transparent, rgba(16, 185, 129, 0.02), transparent); }
+  .compare-section h2 { font-size: 28px; margin-bottom: 16px; }
+  .compare-table {
+    width: 100%;
+    margin-top: 24px;
+    border-collapse: collapse;
+    overflow: hidden;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+  }
+  .compare-table th, .compare-table td {
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .compare-table th {
+    background: var(--bg-elev);
+    color: var(--text-dim);
+    font-weight: 500;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .compare-table tr:last-child td { border-bottom: none; }
+  .compare-table td.free { color: var(--accent); }
+  .compare-table td.paid { color: var(--paid); }
+  .compare-table td.future { color: var(--text-muted); }
+
+  /* Bottom CTA */
+  footer { padding: 56px 0 48px; border-top: 1px solid var(--border); text-align: center; }
+  footer h2 { font-size: 22px; margin-bottom: 12px; }
+  footer p { color: var(--text-dim); margin-bottom: 24px; max-width: 580px; margin-left: auto; margin-right: auto; }
+  .btn {
+    display: inline-block;
+    padding: 11px 22px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.15s;
+    border: 1px solid transparent;
+  }
+  .btn-primary { background: var(--accent); color: #052e1f; }
+  .btn-primary:hover { background: #34d399; text-decoration: none; }
+  .btn-ghost { border-color: var(--border); color: var(--text); }
+  .btn-ghost:hover { background: var(--bg-elev); text-decoration: none; }
+
+  section { padding: 24px 0; }
+  .section-title { font-size: 18px; font-weight: 600; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="container">
+    <a href="/" class="logo">Радар<span>·</span></a>
+    <ul>
+      <li><a href="/">О проекте</a></li>
+      <li><a href="/sources.html" class="active">Источники</a></li>
+      <li><a href="/#contact">Связаться</a></li>
+    </ul>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="container">
+    <span class="hero-eyebrow">data sources · v0 (free) vs максимум (paid)</span>
+    <h1>Источники сигналов Радара</h1>
+    <p class="hero-lede">
+      Что достаём прямо сейчас (бесплатные источники, v0) — и что подключим в v1–v2,
+      когда появятся первые платящие клиенты. Каждый источник — с описанием,
+      как Радар его интерпретирует.
+    </p>
+    <div class="legend">
+      <span class="legend-item"><span class="dot dot-live"></span> подключено к живым данным</span>
+      <span class="legend-item"><span class="dot dot-wait"></span> код готов, ждёт регистрации</span>
+      <span class="legend-item"><span class="dot dot-paid"></span> платный, для расширения v1+</span>
+      <span class="legend-item"><span class="dot dot-future"></span> рассматриваем для v2+</span>
+    </div>
+  </div>
+</section>
+
+<section class="container">
+
+<div class="split">
+
+<!-- ============================================ -->
+<!-- ЛЕВАЯ КОЛОНКА: FREE / СЕЙЧАС -->
+<!-- ============================================ -->
+<div class="pane free">
+  <div class="pane-head">
+    <div class="pane-eyebrow">Карта 1 · текущее состояние v0</div>
+    <h2>Бесплатные источники</h2>
+    <p class="pane-lede">
+      Всё что официально открыто или даёт free-tier. Достаточно для пилота
+      (1 производство в МСК+МО, ~200 уникальных компаний в обработке).
+    </p>
+    <span class="pane-cost">Operational бюджет: 0 ₽/мес</span>
+  </div>
+
+  <div class="source-list">
+
+    <!-- ЕИС -->
+    <div class="source wait">
+      <div class="source-head">
+        <span class="source-name">🏛 ЕИС / Госзакупки</span>
+        <span class="source-domain">int44.zakupki.gov.ru</span>
+        <span class="source-status status-wait">ждёт ЭЦП</span>
+      </div>
+      <div class="source-section">
+        <div class="source-section-label">Что достаём</div>
+        <div class="source-section-body">
+          <ul>
+            <li>Тендеры 44-ФЗ и 223-ФЗ (госзакупки и закупки госкомпаний)</li>
+            <li>Планы закупок (что будет объявлено в ближайшие 1–3 месяца)</li>
+            <li>Заказчики, НМЦК, сроки, требования</li>
+            <li>ОКПД2 25.* (металлоизделия), 28.* (машины), 41–43.* (стройка)</li>
+          </ul>
+        </div>
+      </div>
+      <div class="source-section">
+        <div class="source-section-label">Как интерпретируем</div>
+        <div class="source-section-body">
+          AI читает извещение и тело тендера → определяет потенциал металлообработки →
+          скоринг 5 параметров. <strong>План закупок</strong> = ранний сигнал (есть время подготовиться).
+          <strong>Опубликованный тендер</strong> = поздний (только подавать заявку).
+        </div>
+      </div>
+      <div class="source-section">
+        <div class="source-section-label">Логика фильтра</div>
+        <div class="source-section-body">
+          Регион = 77/50 (МСК+МО). ОКПД2 в наших категориях. Сумма ≥ 100 К ₽. 44-ФЗ требует ЭЦП и аккредитации ЭТП.
+        </div>
+      </div>
+      <div class="source-meta">
+        <span class="meta-pill free">Бесплатно</span>
+        <span class="meta-pill">SOAP/OAI-PMH</span>
+        <span class="meta-pill">Нужна КЭП ФНС</span>
+        <span class="meta-pill">~1.5 К ₽ за токен Rutoken</span>
+      </div>
+    </div>
+
+    <!-- egrul.org -->
+    <div class="source live">
+      <div class="source-head">
+        <span class="source-name">🔍 egrul.org — Enrichment</span>
+        <span class="source-domain">egrul.org</span>
+        <span class="source-status status-live">✓ работает live</span>
+      </div>
+      <div class="source-section">
+        <div class="source-section-label">Что достаём по ИНН</div>
+        <div class="source-section-body">
+          <ul>
+            <li>Название, ОГРН, КПП, юридический адрес</li>
+            <li>Регион (для географической фильтрации)</li>
+            <li>ОКВЭДы — основной + до сотни дополнительных</li>
+            <li>Год регистрации (дата ОГРН)</li>
+          </ul>
+        </div>
+      </div>
+      <div class="source-section">
+        <div class="source-section-label">Как интерпретируем</div>
+        <div class="source-section-body">
+          Обогащаем каждую Company из других источников. ОКВЭДы помогают AI понять что компания
+          реально делает (производит / торгует / строит). Размер компании оценивается по выручке
+          (если есть) или эвристически по ОКВЭДам.
+        </div>
+      </div>
+      <div class="source-section">
+        <div class="source-section-label">Логика</div>
+        <div class="source-section-body">
+          Кеш 30 дней в БД (повторно не запрашиваем). Лимит 100 запросов/сутки — на пилоте
+          (1 клиент, ~200 ИНН/мес) с запасом.
+        </div>
+      </div>
+      <div class="source-meta">
+        <span class="meta-pill free">Бесплатно</span>
+        <span class="meta-pill">REST/JSON</span>
+        <span class="meta-pill">Без регистрации</span>
+        <span class="meta-pill">100 req/сутки</span>
+      </div>
+    </div>
+
+    <!-- наш.дом.рф -->
+    <div class="source wait">
+      <div class="source-head">
+        <span class="source-name">🏗 наш.дом.рф / ЕИСЖС</span>
+        <span class="source-domain">наш.дом.рф/api-еисжс</span>
+        <span class="source-status status-wait">ждёт регистрации</span>
+      </div>
+      <div class="source-section">
+        <div class="source-section-label">Что достаём</div>
+        <div class="source-section-body">
+          <ul>
+            <li>Проектные декларации 214-ФЗ (объекты долевого строительства)</li>
+            <li>Разрешения на строительство по всей РФ</li>
+            <li>Застройщик, объект, площадь, сроки, стадия</li>
+            <li>Целевые кредиты, эскроу-счета</li>
+          </ul>
+        </div>
+      </div>
+      <div class="source-section">
+        <div class="source-section-label">Как интерпретируем</div>
+        <div class="source-section-body">
+          <strong>Проектная декларация</strong> = объект только проектируется (3–5 месяцев до МК).
+          <strong>Разрешение на строительство</strong> = ближе к закупкам (2–3 месяца).
+          AI определяет тип объекта (industrial / warehouse / retail / office / residential)
+          и считает примерный объём металла по площади.
+        </div>
+      </div>
+      <div class="source-section">
+        <div class="source-section-label">Логика фильтра</div>
+        <div class="source-section-body">
+          Регион 77/50. Площадь ≥ 1000 м². Тип объекта релевантный для МК (отрезаем гаражи, АЗС).
+        </div>
+      </div>
+      <div class="source-meta">
+        <span class="meta-pill free">Бесплатно для юр.лиц</span>
+        <span class="meta-pill">REST/JSON</span>
+        <span class="meta-pill">10 req/мин (rate limit)</span>
+      </div>
+    </div>
+
+    <!-- apidata.mos.ru -->
+    <div class="source wait">
+      <div class="source-head">
+        <span class="source-name">🏙 apidata.mos.ru — открытые данные Москвы</span>
+        <span class="source-domain">apidata.mos.ru/v1</span>
+        <span class="source-status status-wait">ждёт ключа</span>
+      </div>
+      <div class="source-section">
+        <div class="source-section-label">Что достаём</div>
+        <div class="source-section-body">
+          <ul>
+            <li>Разрешения на строительство от Мосгосстройнадзора</li>
+            <li>1000+ датасетов мэрии Москвы (городская инфраструктура, ЖКХ, благоустройство)</li>
+            <li>Заявки в zoning-комитеты, изменения регламентов</li>
+          </ul>
+        </div>
+      </div>
+      <div class="source-section">
+        <div class="source-section-label">Как интерпретируем</div>
+        <div class="source-section-body">
+          Дополняет наш.дом.рф там, где наш.дом.рф фокусируется на жилом строительстве.
+          Здесь — коммерческие, инфраструктурные, промышленные объекты Москвы.
+          AI приводит названия Cells-полей к единому формату ConstructionParser.
+        </div>
+      </div>
+      <div class="source-meta">
+        <span class="meta-pill free">Бесплатно с регистрацией</span>
+        <span class="meta-pill">REST/JSON + OData</span>
+        <span class="meta-pill">только Москва</span>
+      </div>
+    </div>
+
+    <!-- ЕФРСБ -->
+    <div class="source wait">
+      <div class="source-head">
+        <span class="source-name">⚖️ ЕФРСБ — Реестр банкротств</span>
+        <span class="source-domain">fedresurs.ru</span>
+        <span class="source-status status-wait">ждёт регистрации</span>
+      </div>
+      <div class="source-section">
+        <div class="source-section-label">Что достаём</div>
+        <div class="source-section-body">
+          <ul>
+            <li>Введение наблюдения / конкурсного производства</li>
+            <li>Назначение арбитражных управляющих</li>
+            <li>Должник: ИНН, ОКВЭДы, регион, аффилированные лица</li>
+            <li>Стадия процедуры</li>
+          </ul>
+        </div>
+      </div>
+      <div class="source-section">
+        <div class="source-section-label">Как интерпретируем</div>
+        <div class="source-section-body">
+          <strong>Банкротство подрядчика = окно замены поставщика.</strong>
+          У должника-СМР-компании были активные стройки → их заказчики (девелоперы) сейчас
+          ищут нового подрядчика по МК. Это <strong>самый сильный сигнал</strong> из всех 4 источников
+          (Score часто 4.5+).
+        </div>
+      </div>
+      <div class="source-section">
+        <div class="source-section-label">Логика фильтра</div>
+        <div class="source-section-body">
+          Регион 77/50. ОКВЭДы релевантные (25.*, 28.*, 41–43.*, 46.7*). Стадии: наблюдение,
+          конкурсное, финансовое оздоровление, внешнее управление. Завершение производства — поздно.
+        </div>
+      </div>
+      <div class="source-meta">
+        <span class="meta-pill free">Бесплатно</span>
+        <span class="meta-pill">REST API v1.3.0</span>
+        <span class="meta-pill">Токен 8 часов</span>
+        <span class="meta-pill">Официальный SLA</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- ПРАВАЯ КОЛОНКА: PAID / МАКСИМУМ -->
+<!-- ============================================ -->
+<div class="pane paid">
+  <div class="pane-head">
+    <div class="pane-eyebrow">Карта 2 · максимум возможного</div>
+    <h2>Платные источники (v1+)</h2>
+    <p class="pane-lede">
+      Подключаем по мере роста: когда есть MRR и понимание окупаемости каждого источника.
+      Цены — на 2026 май, минимальные тарифы.
+    </p>
+    <span class="pane-cost">Полный пакет: ~50–80 К ₽/мес</span>
+  </div>
+
+  <div class="source-list">
+
+    <!-- СПАРК -->
+    <div class="source paid">
+      <div class="source-head">
+        <span class="source-name">💎 СПАРК-Интерфакс</span>
+        <span class="source-domain">spark-interfax.ru</span>
+        <span class="source-status status-paid">~25–75 К ₽/мес</span>
+      </div>
+      <div class="source-section">
+        <div class="source-section-label">Что добавит к нашему AI</div>
+        <div class="source-section-body">
+          <ul>
+            <li>Полная финансовая отчётность (баланс, P&L, выручка за 5 лет)</li>
+            <li>Связи между компаниями (холдинги, аффилированные)</li>
+            <li>Бенефициары, владельцы, директора</li>
+            <li>Тендерная история — кто, где, когда выигрывал</li>
+            <li>Скоринг финансовой надёжности и риска</li>
+          </ul>
+        </div>
+      </div>
+      <div class="source-section">
+        <div class="source-section-label">Что это даёт интерпретации</div>
+        <div class="source-section-body">
+          AI получает <strong>в 10–20 раз больше контекста</strong> по каждой компании в Decision Chain.
+          Может видеть «у этого заказчика регулярно ту же сеть подрядчиков», «эти 3 компании —
+          один холдинг под разными ООО», «финансовое здоровье снижается, ждать срыв сроков».
+          Главный moat СПАРКа — <strong>граф связей</strong>.
+        </div>
+      </div>
+      <div class="source-meta">
+        <span class="meta-pill cost">25 К ₽/мес × 3 мес</span>
+        <span class="meta-pill">SOAP API</span>
+        <span class="meta-pill">v1+ когда MRR ≥ 250 К</span>
+      </div>
+    </div>
+
+    <!-- ЗАЧЕСТНЫЙБИЗНЕС -->
+    <div class="source paid">
+      <div class="source-head">
+        <span class="source-name">📊 ЗАЧЕСТНЫЙБИЗНЕС API</span>
+        <span class="source-domain">zachestnyibiznes.ru/api</span>
+        <span class="source-status status-paid">5–25 К ₽/мес</span>
+      </div>
+      <div class="source-section">
+        <div class="source-section-label">Что добавит</div>
+        <div class="source-section-body">
+          <ul>
+            <li>Замена egrul.org с лимитом 5 000–500 000 запросов/мес</li>
+            <li>Налоговая отчётность, выручка, налоги, сотрудники</li>
+            <li>Полные данные ЕГРЮЛ/ЕГРИП от ФНС</li>
+            <li>История судов (арбитраж + СОЮ)</li>
+          </ul>
+        </div>
+      </div>
+      <div class="source-section">
+        <div class="source-section-label">Когда подключаем</div>
+        <div class="source-section-body">
+          Когда лимит egrul.org (100/сутки) перестанет хватать — это произойдёт примерно на
+          <strong>5 платящих клиентах</strong>. Базовый тариф 5К ₽/мес даёт 5 000 запросов —
+          с 30-day cache это покрывает 20+ клиентов.
+        </div>
+      </div>
+      <div class="source-meta">
+        <span class="meta-pill cost">5 К ₽/мес базовый</span>
+        <span class="meta-pill">REST/JSON</span>
+        <span class="meta-pill">v0.5+ при >5 клиентов</span>
+      </div>
+    </div>
+
+    <!-- Casebook -->
+    <div class="source paid">
+      <div class="source-head">
+        <span class="source-name">⚖️ Casebook — Арбитраж production-grade</span>
+        <span class="source-domain">casebook.ru</span>
+        <span class="source-status status-paid">~5 К ₽/мес</span>
+      </div>
+      <div class="source-section">
+        <div class="source-section-label">Что добавит</div>
+        <div class="source-section-body">
+          <ul>
+            <li>Все арбитражные дела РФ (kad.arbitr.ru блокирует ботов)</li>
+            <li>Полные тексты исков, решений, постановлений</li>
+            <li>Категоризация: подряд, поставка, налоги, банкротство</li>
+            <li>Real-time уведомления по конкретным ИНН</li>
+            <li>Casebook принадлежит тому же владельцу что kad.arbitr.ru — данные канонически идентичны</li>
+          </ul>
+        </div>
+      </div>
+      <div class="source-section">
+        <div class="source-section-label">Как интерпретируем</div>
+        <div class="source-section-body">
+          <strong>Иск на >5 млн ₽ по теме «подряд» или «поставка»</strong> = срыв сроков =
+          заказчик ищет замену <strong>прямо сейчас</strong>. Это самые быстрые сделки
+          (окно 1–2 недели).
+        </div>
+      </div>
+      <div class="source-meta">
+        <span class="meta-pill cost">60 К ₽/год</span>
+        <span class="meta-pill">REST API</span>
+        <span class="meta-pill">обязательно для арбитража</span>
+      </div>
+    </div>
+
+    <!-- ЕРЗ.РФ Pro -->
+    <div class="source paid">
+      <div class="source-head">
+        <span class="source-name">🏗 ЕРЗ.РФ Pro</span>
+        <span class="source-domain">erzrf.ru</span>
+        <span class="source-status status-paid">2.5–15 К ₽/мес</span>
+      </div>
+      <div class="source-section">
+        <div class="source-section-label">Что добавит к стройке</div>
+        <div class="source-section-body">
+          <ul>
+            <li>60 000+ новостроек РФ с 200 показателями каждая</li>
+            <li>Спутниковый мониторинг хода строительства</li>
+            <li>Рейтинг застройщиков (риск финансовый, репутационный)</li>
+            <li>Прогноз сроков ввода (когда реально будет нужен металл)</li>
+            <li>История смены подрядчиков по объектам</li>
+          </ul>
+        </div>
+      </div>
+      <div class="source-section">
+        <div class="source-section-label">Когда подключаем</div>
+        <div class="source-section-body">
+          Когда нужно более точное предсказание тайминга закупок МК. Базовый тариф 2.5К ₽/мес
+          даёт аналитический отчёт; полный API — по запросу.
+        </div>
+      </div>
+      <div class="source-meta">
+        <span class="meta-pill cost">2.5–15 К ₽/мес</span>
+        <span class="meta-pill">обогащение стройки</span>
+      </div>
+    </div>
+
+    <!-- ImportGenius / ВЭД -->
+    <div class="source paid">
+      <div class="source-head">
+        <span class="source-name">📦 Таможенная статистика ВЭД</span>
+        <span class="source-domain">ImportGenius / Export Genius / ВЭД-Стат</span>
+        <span class="source-status status-paid">от 8 К ₽/мес</span>
+      </div>
+      <div class="source-section">
+        <div class="source-section-label">Что добавит</div>
+        <div class="source-section-body">
+          <ul>
+            <li>Импортные поставки оборудования (что и от кого ввозят)</li>
+            <li>Кто из российских компаний больше всего импортирует комплектующие</li>
+            <li>Прекращение импорта (санкции) = ищут отечественную замену</li>
+            <li>Объём и динамика импорта по категориям</li>
+          </ul>
+        </div>
+      </div>
+      <div class="source-section">
+        <div class="source-section-label">Как интерпретируем</div>
+        <div class="source-section-body">
+          <strong>Импортозамещение — главный нарратив Радара 2026.</strong> Видим какие компании
+          раньше закупали у Schroff/Rittal/итальянских поставщиков, и сейчас вынуждены искать
+          российский аналог. Это <strong>лучшие лиды</strong>.
+        </div>
+      </div>
+      <div class="source-meta">
+        <span class="meta-pill cost">8–20 К ₽/мес</span>
+        <span class="meta-pill">импортозамещение GTM</span>
+      </div>
+    </div>
+
+    <!-- 2ГИС Pro / Контур.Компас -->
+    <div class="source paid">
+      <div class="source-head">
+        <span class="source-name">📇 Контактные базы — 2ГИС Pro / Контур.Компас</span>
+        <span class="source-domain">2gis.ru/Pro · kompas.kontur.ru</span>
+        <span class="source-status status-paid">от 3 К ₽/мес</span>
+      </div>
+      <div class="source-section">
+        <div class="source-section-label">Что добавит</div>
+        <div class="source-section-body">
+          <ul>
+            <li>Прямые телефоны/email директоров, снабженцев, технологов</li>
+            <li>Роли в компании (главный инженер, директор по производству)</li>
+            <li>LinkedIn-аналоги, Telegram-каналы отраслевые</li>
+            <li>Размер компании, количество сотрудников</li>
+          </ul>
+        </div>
+      </div>
+      <div class="source-section">
+        <div class="source-section-label">Как интерпретируем</div>
+        <div class="source-section-body">
+          Decision Chain в Радаре сейчас показывает «снабженец генподрядчика».
+          С контактной базой — сразу <strong>«Иванов Иван Иванович, +7 905 …»</strong>.
+          AI генерирует черновик первого касания под конкретного человека.
+        </div>
+      </div>
+      <div class="source-meta">
+        <span class="meta-pill cost">3–15 К ₽/мес</span>
+        <span class="meta-pill">для AI-черновика первого касания</span>
+      </div>
+    </div>
+
+    <!-- MetalTorg / Metalinfo -->
+    <div class="source paid">
+      <div class="source-head">
+        <span class="source-name">📈 MetalTorg / Metalinfo — цены и индексы металла</span>
+        <span class="source-domain">metaltorg.ru · metalinfo.ru</span>
+        <span class="source-status status-paid">от 5 К ₽/мес</span>
+      </div>
+      <div class="source-section">
+        <div class="source-section-label">Что добавит</div>
+        <div class="source-section-body">
+          <ul>
+            <li>Текущие индексы цен по сортаменту (лист, прокат, нержавейка)</li>
+            <li>Динамика и сезонность за 3–5 лет</li>
+            <li>Прогноз цен от аналитиков</li>
+            <li>Новости рынка металла</li>
+          </ul>
+        </div>
+      </div>
+      <div class="source-section">
+        <div class="source-section-label">Когда нужно (Procurement-модуль v3)</div>
+        <div class="source-section-body">
+          Не для Push-направления. <strong>Понадобится для Procurement-модуля v3</strong>:
+          когда Радар будет помогать производствам с закупкой металла —
+          AI-прогноз цен и рекомендация тайминга закупки.
+        </div>
+      </div>
+      <div class="source-meta">
+        <span class="meta-pill cost">5–10 К ₽/мес</span>
+        <span class="meta-pill">только для Procurement v3</span>
+      </div>
+    </div>
+
+    <!-- hh.ru Pro -->
+    <div class="source paid">
+      <div class="source-head">
+        <span class="source-name">👷 hh.ru / Авито Работа Pro — вакансии</span>
+        <span class="source-domain">hh.ru · avito.ru</span>
+        <span class="source-status status-paid">от 5 К ₽/мес</span>
+      </div>
+      <div class="source-section">
+        <div class="source-section-label">Что добавит</div>
+        <div class="source-section-body">
+          <ul>
+            <li>Рост открытых вакансий по компании (расширение производства)</li>
+            <li>Вакансии конкретных специальностей — сварщики, операторы ЧПУ, технологи КМД</li>
+            <li>API для отслеживания «спросов на людей» как leading indicator</li>
+          </ul>
+        </div>
+      </div>
+      <div class="source-section">
+        <div class="source-section-label">Как интерпретируем</div>
+        <div class="source-section-body">
+          <strong>+8 вакансий сварщиков за неделю + закупка кран-балки = новый цех.</strong>
+          Перед запуском новых мощностей часть работ часто отдают на аутсорс.
+          Это ранний сигнал коммерческой возможности (3–6 мес).
+        </div>
+      </div>
+      <div class="source-meta">
+        <span class="meta-pill cost">5–10 К ₽/мес</span>
+        <span class="meta-pill">recruitment как proxy</span>
+      </div>
+    </div>
+
+    <!-- Competitor radar -->
+    <div class="source future">
+      <div class="source-head">
+        <span class="source-name">🎯 Competitor radar — Similarweb / Serpstat / TGStat</span>
+        <span class="source-domain">similarweb.com · serpstat.com · tgstat.ru</span>
+        <span class="source-status status-future">v2+</span>
+      </div>
+      <div class="source-section">
+        <div class="source-section-label">Что добавит</div>
+        <div class="source-section-body">
+          <ul>
+            <li>Реклама и SEO-активность конкурентов (что они продвигают)</li>
+            <li>Поисковая видимость по нашим тематикам</li>
+            <li>Telegram-каналы отраслевые, упоминания компаний</li>
+          </ul>
+        </div>
+      </div>
+      <div class="source-section">
+        <div class="source-section-label">Когда нужно</div>
+        <div class="source-section-body">
+          На v2+ когда будет полезен <strong>competitor radar</strong> для производств:
+          «ваш конкурент Х рекламируется по гибке нержавейки, активность выросла в 3 раза».
+        </div>
+      </div>
+      <div class="source-meta">
+        <span class="meta-pill cost">~10–20 К ₽/мес</span>
+        <span class="meta-pill">v2+ feature</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</div>
+
+</section>
+
+<!-- ============================================ -->
+<!-- COMPARISON / SUMMARY -->
+<!-- ============================================ -->
+<section class="compare-section">
+  <div class="container">
+    <div class="pane-eyebrow" style="text-align: center; margin-bottom: 12px;">Сводно</div>
+    <h2 style="text-align: center;">Что меняется при подключении платных источников</h2>
+
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>Возможность</th>
+          <th>v0 (free)</th>
+          <th>v1–v2 (с paid)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Покрытие компаний</td>
+          <td class="free">~30 000 в МСК+МО через ОКВЭД</td>
+          <td class="paid">100 000+ + холдинговые связи</td>
+        </tr>
+        <tr>
+          <td>Точность фин.риска</td>
+          <td class="free">Эвристика по выручке (если есть)</td>
+          <td class="paid">5-летняя отчётность, рейтинг СПАРК</td>
+        </tr>
+        <tr>
+          <td>Decision Chain детализация</td>
+          <td class="free">«снабженец генподрядчика»</td>
+          <td class="paid">«Иванов Иван Иванович, +7 905 …»</td>
+        </tr>
+        <tr>
+          <td>Арбитраж</td>
+          <td class="free">Не подключён (Mock)</td>
+          <td class="paid">Real-time через Casebook</td>
+        </tr>
+        <tr>
+          <td>Скорость свежих банкротств</td>
+          <td class="free">До 1 часа</td>
+          <td class="paid">Минуты (push-уведомления)</td>
+        </tr>
+        <tr>
+          <td>Связи между объектами</td>
+          <td class="free">По публичной информации</td>
+          <td class="paid">Полный граф холдингов + проектов</td>
+        </tr>
+        <tr>
+          <td>Импортозамещение как сигнал</td>
+          <td class="future">Косвенно через новости</td>
+          <td class="paid">ВЭД-статистика, прямые данные</td>
+        </tr>
+        <tr>
+          <td>Прогноз цен на металл</td>
+          <td class="future">Нет</td>
+          <td class="paid">MetalTorg + MetallInfo (для Procurement v3)</td>
+        </tr>
+        <tr>
+          <td>Operational бюджет</td>
+          <td class="free">0 ₽/мес + 1.5 К ₽ разово (Rutoken)</td>
+          <td class="paid">50–80 К ₽/мес (~600–900 К ₽/год)</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p style="margin-top: 24px; color: var(--text-dim); font-size: 14px; text-align: center;">
+      <strong>Принцип:</strong> платные источники подключаем <strong>по одному</strong>,
+      каждый — после того как окупит себя на действующих клиентах.
+      Не «купим всё сразу и посмотрим что приживётся».
+    </p>
+  </div>
+</section>
+
+<!-- CTA -->
+<footer>
+  <div class="container">
+    <h2>Хотите попробовать на своих ИНН?</h2>
+    <p>
+      Готов запустить демо на 5–10 ИНН ваших знакомых клиентов и показать как Радар их видит —
+      ОКВЭДы, регион, фин.риск, потенциальные сигналы из открытых источников.
+    </p>
+    <a href="mailto:oceandrivefin@gmail.com" class="btn btn-primary">Написать</a>
+    <a href="/" class="btn btn-ghost">На главную</a>
+  </div>
+</footer>
+
+</body>
+</html>
